@@ -33,8 +33,18 @@ class ImportarPersonajesSwapiCommand extends Command
                 continue;
             }
 
-            if (Personaje::where('swapi_id', $swapiId)->exists()) {
-                $this->warn("ID {$swapiId} ya importado — omitido.");
+            $existente = Personaje::withTrashed()->where('swapi_id', $swapiId)->first();
+
+            if ($existente?->trashed()) {
+                $existente->restore();
+                $this->info("Restaurado: {$existente->nombre} (SWAPI #{$swapiId})");
+                $importados++;
+
+                continue;
+            }
+
+            if ($existente) {
+                $this->warn("ID {$swapiId} ya importado, se omite.");
                 $omitidos++;
 
                 continue;

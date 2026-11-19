@@ -48,13 +48,13 @@ class PersonajeSeeder extends Seeder
                 'swapi_id' => null,
             ],
             [
-                'nombre' => 'Obi-Wan Kenobi',
-                'altura' => 182,
-                'masa' => 77,
-                'color_cabello' => 'white',
-                'color_ojos' => 'blue-gray',
-                'genero' => 'masculino',
-                'planeta_origen' => 'Stewjon',
+                'nombre' => 'Padmé Amidala',
+                'altura' => 165,
+                'masa' => 45,
+                'color_cabello' => 'brown',
+                'color_ojos' => 'brown',
+                'genero' => 'femenino',
+                'planeta_origen' => 'Naboo',
                 'origen_swapi' => false,
                 'swapi_id' => null,
             ],
@@ -71,8 +71,9 @@ class PersonajeSeeder extends Seeder
             ],
         ];
 
+        // withTrashed(): si un ejemplo fue eliminado, no se vuelve a crear duplicado.
         foreach ($ejemplos as $fila) {
-            Personaje::firstOrCreate(
+            Personaje::withTrashed()->firstOrCreate(
                 ['nombre' => $fila['nombre']],
                 $fila
             );

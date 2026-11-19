@@ -95,7 +95,7 @@ class PersonajeController extends Controller
             ->with('success', 'Personaje actualizado correctamente.');
     }
 
-    /** Elimina el registro de la base de datos. */
+    /** Borrado lógico: el registro queda en la base con deleted_at y deja de listarse. */
     public function destroy(Personaje $personaje): RedirectResponse
     {
         $personaje->delete();
@@ -115,7 +115,18 @@ class PersonajeController extends Controller
     ): RedirectResponse {
         $swapiId = (int) $request->validated('swapi_id');
 
-        if (Personaje::where('swapi_id', $swapiId)->exists()) {
+        // withTrashed() incluye los eliminados: swapi_id es único también para ellos.
+        $existente = Personaje::withTrashed()->where('swapi_id', $swapiId)->first();
+
+        if ($existente?->trashed()) {
+            $existente->restore();
+
+            return redirect()
+                ->route('personajes.index')
+                ->with('success', "{$existente->nombre} estaba eliminado y se restauró.");
+        }
+
+        if ($existente) {
             return back()->withErrors([
                 'swapi_id' => 'Ese personaje de SWAPI ya está registrado.',
             ]);
