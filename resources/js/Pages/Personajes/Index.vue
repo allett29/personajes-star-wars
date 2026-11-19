@@ -1,7 +1,9 @@
 <script setup>
 // Lista de personajes con paginación, acciones de editar y eliminar.
 import FlashMessage from '@/Components/FlashMessage.vue';
+import ImportModal from '@/Components/ImportModal.vue';
 import { Link, router } from '@inertiajs/vue3';
+import { ref } from 'vue';
 
 defineProps({
     personajes: {
@@ -14,6 +16,8 @@ defineProps({
 function etiquetaOrigen(origenSwapi) {
     return origenSwapi ? 'SWAPI' : 'Manual';
 }
+
+const modalImportarAbierto = ref(false);
 
 /** Pide confirmación antes de eliminar un registro. */
 function eliminar(id) {
@@ -29,6 +33,13 @@ function eliminar(id) {
             <div class="mb-6 flex flex-wrap items-center justify-between gap-3">
                 <h1 class="text-2xl font-bold text-gray-900">Personajes Star Wars</h1>
                 <div class="flex gap-2">
+                    <button
+                        type="button"
+                        class="rounded bg-amber-600 px-4 py-2 text-sm text-white hover:bg-amber-700"
+                        @click="modalImportarAbierto = true"
+                    >
+                        Importar desde SWAPI
+                    </button>
                     <Link
                         href="/personajes/crear"
                         class="rounded bg-indigo-600 px-4 py-2 text-sm text-white hover:bg-indigo-700"
@@ -37,6 +48,8 @@ function eliminar(id) {
                     </Link>
                 </div>
             </div>
+
+            <ImportModal :abierto="modalImportarAbierto" @cerrar="modalImportarAbierto = false" />
 
             <FlashMessage />
 

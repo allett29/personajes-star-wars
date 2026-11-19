@@ -2,12 +2,15 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\ImportPersonajeSwapiRequest;
 use App\Http\Requests\StorePersonajeRequest;
 use App\Http\Requests\UpdatePersonajeRequest;
 use App\Models\Personaje;
+use App\Services\SwapiPersonajeService;
 use Illuminate\Http\RedirectResponse;
 use Inertia\Inertia;
 use Inertia\Response;
+use RuntimeException;
 
 /**
  * CRUD de personajes. Cada acción devuelve una vista Inertia o redirige con mensaje.
@@ -72,5 +75,36 @@ class PersonajeController extends Controller
         return redirect()
             ->route('personajes.index')
             ->with('success', 'Personaje eliminado correctamente.');
+    }
+
+    /**
+     * Importa un personaje desde SWAPI por su ID.
+     * Evita duplicados por swapi_id y devuelve errores legibles si la API falla.
+     */
+    public function importar(
+        ImportPersonajeSwapiRequest $request,
+        SwapiPersonajeService $swapi
+    ): RedirectResponse {
+        $swapiId = (int) $request->validated('swapi_id');
+
+        if (Personaje::where('swapi_id', $swapiId)->exists()) {
+            return back()->withErrors([
+                'swapi_id' => 'Ese personaje de SWAPI ya está registrado.',
+            ]);
+        }
+
+        try {
+            $datos = $swapi->obtenerDatosParaGuardar($swapiId);
+        } catch (RuntimeException $e) {
+            return back()->withErrors([
+                'swapi_id' => $e->getMessage(),
+            ]);
+        }
+
+        Personaje::create($datos);
+
+        return redirect()
+            ->route('personajes.index')
+            ->with('success', 'Personaje importado desde SWAPI correctamente.');
     }
 }
