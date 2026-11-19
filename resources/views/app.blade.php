@@ -1,13 +1,19 @@
 <!DOCTYPE html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
 <head>
+    <script>
+        // Evita parpadeo al cargar si el usuario ya eligió modo oscuro.
+        if (localStorage.getItem('tema-oscuro') === '1') {
+            document.documentElement.classList.add('dark');
+        }
+    </script>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title inertia>{{ config('app.name', 'Laravel') }}</title>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     @inertiaHead
 </head>
-<body class="antialiased text-gray-900 transition-colors duration-200 dark:bg-gray-950 dark:text-gray-100">
+<body class="antialiased">
     @inertia
 </body>
 </html>

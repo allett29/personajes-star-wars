@@ -2,7 +2,6 @@
 
 namespace App\Services;
 
-use App\Models\Personaje;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Http;
 use RuntimeException;
@@ -34,19 +33,6 @@ class SwapiPersonajeService
             'origen_swapi' => true,
             'swapi_id' => $swapiId,
         ];
-    }
-
-    /**
-     * Importa un personaje si el swapi_id no existe aún en la base de datos.
-     * Reutilizado por el controlador web y el comando Artisan.
-     */
-    public function importarPersonaje(int $swapiId): Personaje
-    {
-        if (Personaje::where('swapi_id', $swapiId)->exists()) {
-            throw new RuntimeException('Ese personaje de SWAPI ya está registrado.');
-        }
-
-        return Personaje::create($this->obtenerDatosParaGuardar($swapiId));
     }
 
     /** Realiza la petición HTTP con tiempo máximo de espera. */

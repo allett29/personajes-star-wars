@@ -18,18 +18,26 @@ use RuntimeException;
  */
 class PersonajeController extends Controller
 {
-    /** Lista personajes: paginación, búsqueda, filtro y orden (bonus). */
+    /** Lista con paginación, búsqueda, filtro por género y orden por columna (query string). */
     public function index(Request $request): Response
     {
-        $generosPermitidos = ['masculino', 'femenino', 'n/a'];
-        $columnasOrden = ['nombre', 'altura', 'masa', 'genero'];
-
         $generoFiltro = $request->string('genero')->toString();
+        $generosPermitidos = ['masculino', 'femenino', 'n/a'];
         $buscar = trim($request->string('buscar')->toString());
-        $ordenar = $request->string('ordenar')->toString();
+
+        $orden = $request->string('orden')->toString();
+        $columnasOrden = ['nombre', 'altura', 'masa', 'genero'];
+        if (! in_array($orden, $columnasOrden, true)) {
+            $orden = 'nombre';
+        }
+
         $direccion = strtolower($request->string('direccion')->toString()) === 'desc' ? 'desc' : 'asc';
 
         $consulta = Personaje::query();
+
+        if ($buscar !== '') {
+            $consulta->where('nombre', 'like', '%'.addcslashes($buscar, '%_\\').'%');
+        }
 
         if (in_array($generoFiltro, $generosPermitidos, true)) {
             $consulta->where('genero', $generoFiltro);
@@ -37,24 +45,14 @@ class PersonajeController extends Controller
             $generoFiltro = '';
         }
 
-        if ($buscar !== '') {
-            $consulta->where('nombre', 'like', '%'.$buscar.'%');
-        }
-
-        if (in_array($ordenar, $columnasOrden, true)) {
-            $consulta->orderBy($ordenar, $direccion);
-        } else {
-            $ordenar = 'nombre';
-            $direccion = 'asc';
-            $consulta->orderBy('nombre', 'asc');
-        }
+        $consulta->orderBy($orden, $direccion);
 
         return Inertia::render('Personajes/Index', [
             'personajes' => $consulta->paginate(10)->withQueryString(),
             'filtros' => [
                 'genero' => $generoFiltro,
                 'buscar' => $buscar,
-                'ordenar' => $ordenar,
+                'orden' => $orden,
                 'direccion' => $direccion,
             ],
         ]);
@@ -117,13 +115,21 @@ class PersonajeController extends Controller
     ): RedirectResponse {
         $swapiId = (int) $request->validated('swapi_id');
 
+        if (Personaje::where('swapi_id', $swapiId)->exists()) {
+            return back()->withErrors([
+                'swapi_id' => 'Ese personaje de SWAPI ya está registrado.',
+            ]);
+        }
+
         try {
-            $swapi->importarPersonaje($swapiId);
+            $datos = $swapi->obtenerDatosParaGuardar($swapiId);
         } catch (RuntimeException $e) {
             return back()->withErrors([
                 'swapi_id' => $e->getMessage(),
             ]);
         }
+
+        Personaje::create($datos);
 
         return redirect()
             ->route('personajes.index')

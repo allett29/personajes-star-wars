@@ -1,25 +1,19 @@
 <script setup>
-// Listado con búsqueda, filtros, ordenamiento, paginación y confirmación al eliminar.
+/**
+ * Listado principal: filtros en URL, tabla ordenable, confirmación al eliminar.
+ */
 import AppLayout from '@/Layouts/AppLayout.vue';
+import CardPanel from '@/Components/CardPanel.vue';
 import ConfirmDialog from '@/Components/ConfirmDialog.vue';
 import FlashMessage from '@/Components/FlashMessage.vue';
 import ImportModal from '@/Components/ImportModal.vue';
-import {
-    btnAcento,
-    btnPrimario,
-    enlaceAccion,
-    labelCampo,
-    pageContainer,
-    pageWrapper,
-    selectCampo,
-    tablaFila,
-    tablaHead,
-    tablaWrap,
-    tituloPagina,
-    inputCampo,
-} from '@/lib/clasesUi';
+import PageHeader from '@/Components/PageHeader.vue';
+import { visitarListado } from '@/composables/useFiltrosListado';
+import { btnAdvertencia, btnEnlace, btnEnlacePeligro, btnPrimario, filaTabla, selectBase, tablaCabecera } from '@/lib/clasesUi';
 import { Link, router } from '@inertiajs/vue3';
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
+
+defineOptions({ layout: AppLayout });
 
 const props = defineProps({
     personajes: { type: Object, required: true },
@@ -28,124 +22,138 @@ const props = defineProps({
         default: () => ({
             genero: '',
             buscar: '',
-            ordenar: 'nombre',
+            orden: 'nombre',
             direccion: 'asc',
         }),
     },
 });
 
 const modalImportarAbierto = ref(false);
-const textoBusqueda = ref(props.filtros.buscar || '');
-const confirmacion = ref({ abierto: false, id: null, nombre: '' });
+const confirmarEliminar = ref(false);
+const idEliminar = ref(null);
+const nombreEliminar = ref('');
+const eliminando = ref(false);
 
-/** Arma los query params del listado y conserva filtros activos. */
-function irAListado(cambios = {}) {
-    const params = {
-        genero: props.filtros.genero || undefined,
-        buscar: props.filtros.buscar || undefined,
-        ordenar: props.filtros.ordenar || 'nombre',
-        direccion: props.filtros.direccion || 'asc',
-        ...cambios,
-    };
+const textoBusqueda = ref(props.filtros.buscar ?? '');
 
-    Object.keys(params).forEach((clave) => {
-        if (params[clave] === '' || params[clave] === undefined) {
-            delete params[clave];
-        }
-    });
-
-    router.get('/personajes', params, { preserveState: true, replace: true });
-}
+/** Parámetros actuales para conservar al cambiar un solo filtro. */
+const filtrosBase = computed(() => ({
+    genero: props.filtros.genero ?? '',
+    buscar: props.filtros.buscar ?? '',
+    orden: props.filtros.orden ?? 'nombre',
+    direccion: props.filtros.direccion ?? 'asc',
+}));
 
 function etiquetaOrigen(origenSwapi) {
     return origenSwapi ? 'SWAPI' : 'Manual';
 }
 
-function cambiarFiltroGenero(evento) {
-    irAListado({ genero: evento.target.value || undefined });
+function aplicarBusqueda() {
+    visitarListado({ ...filtrosBase.value, buscar: textoBusqueda.value.trim() });
 }
 
-function buscarPorNombre() {
-    irAListado({ buscar: textoBusqueda.value.trim() || undefined });
+function cambiarGenero(evento) {
+    visitarListado({ ...filtrosBase.value, genero: evento.target.value });
 }
 
-/** Alterna asc/desc al hacer clic en un encabezado de columna. */
+/** Alterna asc/desc al hacer clic en el encabezado de columna. */
 function ordenarPor(columna) {
-    let direccion = 'asc';
-    if (props.filtros.ordenar === columna && props.filtros.direccion === 'asc') {
-        direccion = 'desc';
-    }
-    irAListado({ ordenar: columna, direccion });
+    const direccion =
+        props.filtros.orden === columna && props.filtros.direccion === 'asc' ? 'desc' : 'asc';
+
+    visitarListado({
+        ...filtrosBase.value,
+        orden: columna,
+        direccion,
+    });
 }
 
-function iconoOrden(columna) {
-    if (props.filtros.ordenar !== columna) {
+function indicadorOrden(columna) {
+    if (props.filtros.orden !== columna) {
         return '';
     }
+
     return props.filtros.direccion === 'asc' ? ' ↑' : ' ↓';
 }
 
-function solicitarEliminar(personaje) {
-    confirmacion.value = { abierto: true, id: personaje.id, nombre: personaje.nombre };
+function pedirEliminar(personaje) {
+    idEliminar.value = personaje.id;
+    nombreEliminar.value = personaje.nombre;
+    confirmarEliminar.value = true;
 }
 
-function confirmarEliminar() {
-    router.delete(`/personajes/${confirmacion.value.id}`, {
+function cancelarEliminar() {
+    if (eliminando.value) {
+        return;
+    }
+    confirmarEliminar.value = false;
+    idEliminar.value = null;
+    nombreEliminar.value = '';
+}
+
+function confirmarEliminacion() {
+    eliminando.value = true;
+    router.delete(`/personajes/${idEliminar.value}`, {
+        preserveScroll: true,
         onFinish: () => {
-            confirmacion.value = { abierto: false, id: null, nombre: '' };
+            eliminando.value = false;
+            cancelarEliminar();
         },
     });
 }
 </script>
 
 <template>
-    <AppLayout>
-        <div :class="pageWrapper">
-            <div :class="pageContainer">
-                <div class="mb-6 flex flex-wrap items-center justify-between gap-3">
-                    <h1 :class="tituloPagina">Personajes Star Wars</h1>
-                    <div class="flex flex-wrap gap-2">
-                        <button type="button" :class="btnAcento" @click="modalImportarAbierto = true">
-                            Importar desde SWAPI
-                        </button>
-                        <Link href="/personajes/crear" :class="btnPrimario">Crear nuevo</Link>
-                    </div>
-                </div>
+    <div class="py-8">
+        <div class="mx-auto max-w-5xl px-4">
+            <PageHeader titulo="Personajes Star Wars" descripcion="Gestión manual e importación desde SWAPI.">
+                <template #acciones>
+                    <button type="button" :class="btnAdvertencia" @click="modalImportarAbierto = true">
+                        Importar SWAPI
+                    </button>
+                    <Link href="/personajes/crear" :class="btnPrimario">Crear nuevo</Link>
+                </template>
+            </PageHeader>
 
-                <ImportModal :abierto="modalImportarAbierto" @cerrar="modalImportarAbierto = false" />
+            <ImportModal :abierto="modalImportarAbierto" @cerrar="modalImportarAbierto = false" />
+            <FlashMessage />
 
-                <ConfirmDialog
-                    :abierto="confirmacion.abierto"
-                    titulo="Eliminar personaje"
-                    :mensaje="`¿Eliminar a ${confirmacion.nombre}? Esta acción no se puede deshacer.`"
-                    texto-confirmar="Eliminar"
-                    @confirmar="confirmarEliminar"
-                    @cancelar="confirmacion.abierto = false"
-                />
+            <ConfirmDialog
+                :abierto="confirmarEliminar"
+                titulo="Eliminar personaje"
+                :mensaje="`¿Eliminar a «${nombreEliminar}»? Esta acción no se puede deshacer.`"
+                texto-confirmar="Eliminar"
+                :cargando="eliminando"
+                @confirmar="confirmarEliminacion"
+                @cancelar="cancelarEliminar"
+            />
 
-                <FlashMessage />
-
-                <div
-                    class="mb-4 flex flex-col gap-3 rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800 sm:flex-row sm:flex-wrap sm:items-end"
-                >
-                    <div class="flex-1 min-w-[200px]">
-                        <label :class="labelCampo" for="buscar">Buscar por nombre</label>
-                        <input
-                            id="buscar"
-                            v-model="textoBusqueda"
-                            type="search"
-                            placeholder="Luke, Leia…"
-                            :class="inputCampo"
-                            @keyup.enter="buscarPorNombre"
-                        />
+            <CardPanel class="mb-4 !p-4">
+                <div class="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
+                    <div class="min-w-[200px] flex-1">
+                        <label class="text-sm font-medium text-gray-700 dark:text-gray-200" for="buscar">
+                            Buscar por nombre
+                        </label>
+                        <form class="mt-1 flex gap-2" @submit.prevent="aplicarBusqueda">
+                            <input
+                                id="buscar"
+                                v-model="textoBusqueda"
+                                type="search"
+                                placeholder="Ej. Luke"
+                                class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100"
+                            />
+                            <button type="submit" :class="btnPrimario">Buscar</button>
+                        </form>
                     </div>
                     <div>
-                        <label :class="labelCampo" for="filtro-genero">Género</label>
+                        <label class="text-sm font-medium text-gray-700 dark:text-gray-200" for="filtro-genero">
+                            Género
+                        </label>
                         <select
                             id="filtro-genero"
-                            :class="selectCampo"
+                            :class="['mt-1', selectBase]"
                             :value="props.filtros.genero"
-                            @change="cambiarFiltroGenero"
+                            @change="cambiarGenero"
                         >
                             <option value="">Todos</option>
                             <option value="masculino">Masculino</option>
@@ -153,85 +161,93 @@ function confirmarEliminar() {
                             <option value="n/a">n/a</option>
                         </select>
                     </div>
-                    <button type="button" :class="btnPrimario" @click="buscarPorNombre">Buscar</button>
                 </div>
+            </CardPanel>
 
-                <div :class="tablaWrap">
+            <CardPanel class="!p-0 overflow-hidden">
+                <div class="overflow-x-auto">
                     <table class="min-w-full text-left text-sm">
-                        <thead :class="tablaHead">
+                        <thead :class="tablaCabecera">
                             <tr>
                                 <th class="px-4 py-3">
                                     <button type="button" class="font-semibold hover:underline" @click="ordenarPor('nombre')">
-                                        Nombre{{ iconoOrden('nombre') }}
+                                        Nombre{{ indicadorOrden('nombre') }}
                                     </button>
                                 </th>
                                 <th class="px-4 py-3">
                                     <button type="button" class="font-semibold hover:underline" @click="ordenarPor('altura')">
-                                        Altura{{ iconoOrden('altura') }}
+                                        Altura{{ indicadorOrden('altura') }}
                                     </button>
                                 </th>
                                 <th class="px-4 py-3">
                                     <button type="button" class="font-semibold hover:underline" @click="ordenarPor('masa')">
-                                        Masa{{ iconoOrden('masa') }}
+                                        Masa{{ indicadorOrden('masa') }}
                                     </button>
                                 </th>
                                 <th class="px-4 py-3">
                                     <button type="button" class="font-semibold hover:underline" @click="ordenarPor('genero')">
-                                        Género{{ iconoOrden('genero') }}
+                                        Género{{ indicadorOrden('genero') }}
                                     </button>
                                 </th>
                                 <th class="px-4 py-3">Origen</th>
                                 <th class="px-4 py-3 text-right">Acciones</th>
                             </tr>
                         </thead>
-                        <tbody class="text-gray-800 dark:text-gray-200">
-                            <tr v-for="personaje in personajes.data" :key="personaje.id" :class="tablaFila">
-                                <td class="px-4 py-3 font-medium">{{ personaje.nombre }}</td>
-                                <td class="px-4 py-3">{{ personaje.altura ?? '—' }}</td>
-                                <td class="px-4 py-3">{{ personaje.masa ?? '—' }}</td>
-                                <td class="px-4 py-3">{{ personaje.genero }}</td>
-                                <td class="px-4 py-3">{{ etiquetaOrigen(personaje.origen_swapi) }}</td>
-                                <td class="px-4 py-3 text-right">
-                                    <Link :href="`/personajes/${personaje.id}/editar`" :class="enlaceAccion">Editar</Link>
-                                    <button
-                                        type="button"
-                                        class="ml-3 font-medium text-red-600 hover:underline dark:text-red-400"
-                                        @click="solicitarEliminar(personaje)"
+                        <tbody>
+                            <tr v-for="personaje in personajes.data" :key="personaje.id" :class="filaTabla">
+                                <td class="px-4 py-3 font-medium text-gray-900 dark:text-gray-100">{{ personaje.nombre }}</td>
+                                <td class="px-4 py-3 text-gray-600 dark:text-gray-300">{{ personaje.altura ?? '—' }}</td>
+                                <td class="px-4 py-3 text-gray-600 dark:text-gray-300">{{ personaje.masa ?? '—' }}</td>
+                                <td class="px-4 py-3 text-gray-600 dark:text-gray-300">{{ personaje.genero }}</td>
+                                <td class="px-4 py-3">
+                                    <span
+                                        class="rounded-full px-2 py-0.5 text-xs font-medium"
+                                        :class="
+                                            personaje.origen_swapi
+                                                ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200'
+                                                : 'bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-200'
+                                        "
                                     >
+                                        {{ etiquetaOrigen(personaje.origen_swapi) }}
+                                    </span>
+                                </td>
+                                <td class="px-4 py-3 text-right">
+                                    <Link :href="`/personajes/${personaje.id}/editar`" :class="btnEnlace">Editar</Link>
+                                    <button type="button" :class="[btnEnlacePeligro, 'ms-3']" @click="pedirEliminar(personaje)">
                                         Eliminar
                                     </button>
                                 </td>
                             </tr>
                             <tr v-if="personajes.data.length === 0">
-                                <td colspan="6" class="px-4 py-8 text-center text-gray-500 dark:text-gray-400">
+                                <td colspan="6" class="px-4 py-10 text-center text-gray-500 dark:text-gray-400">
                                     No hay personajes con estos filtros.
                                 </td>
                             </tr>
                         </tbody>
                     </table>
                 </div>
+            </CardPanel>
 
-                <div v-if="personajes.links.length > 3" class="mt-4 flex flex-wrap justify-center gap-1">
-                    <template v-for="(link, i) in personajes.links" :key="i">
-                        <Link
-                            v-if="link.url"
-                            :href="link.url"
-                            class="rounded-lg border px-3 py-1 text-sm transition"
-                            :class="
-                                link.active
-                                    ? 'border-indigo-600 bg-indigo-600 text-white'
-                                    : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-100 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700'
-                            "
-                            v-html="link.label"
-                        />
-                        <span
-                            v-else
-                            class="rounded-lg border border-gray-200 px-3 py-1 text-sm text-gray-400 dark:border-gray-700"
-                            v-html="link.label"
-                        />
-                    </template>
-                </div>
+            <div v-if="personajes.links.length > 3" class="mt-4 flex flex-wrap justify-center gap-1">
+                <template v-for="(link, i) in personajes.links" :key="i">
+                    <Link
+                        v-if="link.url"
+                        :href="link.url"
+                        class="rounded-lg border px-3 py-1 text-sm transition"
+                        :class="
+                            link.active
+                                ? 'border-indigo-600 bg-indigo-600 text-white'
+                                : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700'
+                        "
+                        v-html="link.label"
+                    />
+                    <span
+                        v-else
+                        class="rounded-lg border border-gray-200 px-3 py-1 text-sm text-gray-400 dark:border-gray-700"
+                        v-html="link.label"
+                    />
+                </template>
             </div>
         </div>
-    </AppLayout>
+    </div>
 </template>

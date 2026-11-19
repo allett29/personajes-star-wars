@@ -13,7 +13,7 @@ onMounted(() => {
 </script>
 
 <template>
-    <div>
+    <div class="min-h-screen bg-[var(--surface-page)] text-[var(--text-primary)]">
         <header
             class="border-b border-gray-200 bg-white/80 backdrop-blur dark:border-gray-700 dark:bg-gray-900/80"
         >

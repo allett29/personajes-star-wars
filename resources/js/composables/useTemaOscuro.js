@@ -1,35 +1,32 @@
 import { ref } from 'vue';
 
-const CLAVE_STORAGE = 'personajes-tema-oscuro';
-
-/** Estado compartido en toda la app (un solo toggle de tema). */
-const temaOscuroActivo = ref(false);
-
-/** Aplica o quita la clase `dark` en <html> para Tailwind. */
-function aplicarEnHtml(esOscuro) {
-    document.documentElement.classList.toggle('dark', esOscuro);
-}
+const CLAVE_STORAGE = 'tema-oscuro';
 
 /**
- * Dark mode con persistencia en localStorage.
- * Se inicializa una vez desde AppLayout al montar la página.
+ * Persiste el modo oscuro en localStorage y la clase `dark` en <html>.
  */
 export function useTemaOscuro() {
+    const activo = ref(false);
+
+    function aplicarEnHtml(esOscuro) {
+        document.documentElement.classList.toggle('dark', esOscuro);
+    }
+
     function inicializar() {
         const guardado = localStorage.getItem(CLAVE_STORAGE);
-        temaOscuroActivo.value = guardado === '1';
-        aplicarEnHtml(temaOscuroActivo.value);
+        const usarOscuro =
+            guardado === '1' ||
+            (guardado === null && window.matchMedia('(prefers-color-scheme: dark)').matches);
+
+        activo.value = usarOscuro;
+        aplicarEnHtml(usarOscuro);
     }
 
     function alternar() {
-        temaOscuroActivo.value = !temaOscuroActivo.value;
-        localStorage.setItem(CLAVE_STORAGE, temaOscuroActivo.value ? '1' : '0');
-        aplicarEnHtml(temaOscuroActivo.value);
+        activo.value = !activo.value;
+        localStorage.setItem(CLAVE_STORAGE, activo.value ? '1' : '0');
+        aplicarEnHtml(activo.value);
     }
 
-    return {
-        activo: temaOscuroActivo,
-        inicializar,
-        alternar,
-    };
+    return { activo, inicializar, alternar };
 }

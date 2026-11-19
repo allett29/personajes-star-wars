@@ -1,8 +1,12 @@
 <script setup>
 import AppLayout from '@/Layouts/AppLayout.vue';
+import CardPanel from '@/Components/CardPanel.vue';
+import PageHeader from '@/Components/PageHeader.vue';
 import PersonajeForm from '@/Components/PersonajeForm.vue';
-import { card, enlaceAccion, pageContainer, pageWrapper, tituloPagina } from '@/lib/clasesUi';
+import { btnEnlace } from '@/lib/clasesUi';
 import { Link, useForm } from '@inertiajs/vue3';
+
+defineOptions({ layout: AppLayout });
 
 const props = defineProps({
     personaje: { type: Object, required: true },
@@ -24,20 +28,13 @@ function actualizar() {
 </script>
 
 <template>
-    <AppLayout>
-        <div :class="pageWrapper">
-            <div :class="pageContainer" class="max-w-xl">
-                <div class="mb-6 flex items-center justify-between">
-                    <h1 :class="tituloPagina">Editar personaje</h1>
-                    <Link href="/personajes" :class="enlaceAccion">Volver al listado</Link>
-                </div>
-                <div :class="card">
-                    <PersonajeForm :form="form" submit-label="Actualizar" @submit="actualizar" />
-                    <Link href="/personajes" class="mt-4 inline-block text-sm text-gray-600 hover:underline dark:text-gray-400">
-                        Cancelar
-                    </Link>
-                </div>
-            </div>
+    <div class="py-8">
+        <div class="mx-auto max-w-xl px-4">
+            <PageHeader :titulo="`Editar: ${personaje.nombre}`" />
+            <CardPanel>
+                <PersonajeForm :form="form" submit-label="Actualizar" @submit="actualizar" />
+                <Link href="/personajes" :class="[btnEnlace, 'mt-6 inline-block']">Volver al listado</Link>
+            </CardPanel>
         </div>
-    </AppLayout>
+    </div>
 </template>
