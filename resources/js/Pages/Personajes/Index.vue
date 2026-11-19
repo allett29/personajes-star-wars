@@ -5,10 +5,14 @@ import ImportModal from '@/Components/ImportModal.vue';
 import { Link, router } from '@inertiajs/vue3';
 import { ref } from 'vue';
 
-defineProps({
+const props = defineProps({
     personajes: {
         type: Object,
         required: true,
+    },
+    filtros: {
+        type: Object,
+        default: () => ({ genero: '' }),
     },
 });
 
@@ -18,6 +22,17 @@ function etiquetaOrigen(origenSwapi) {
 }
 
 const modalImportarAbierto = ref(false);
+
+/** Aplica el filtro por género en la URL sin recargar toda la app. */
+function cambiarFiltroGenero(evento) {
+    const genero = evento.target.value;
+    const parametros = genero ? { genero } : {};
+
+    router.get('/personajes', parametros, {
+        preserveState: true,
+        replace: true,
+    });
+}
 
 /** Pide confirmación antes de eliminar un registro. */
 function eliminar(id) {
@@ -52,6 +67,22 @@ function eliminar(id) {
             <ImportModal :abierto="modalImportarAbierto" @cerrar="modalImportarAbierto = false" />
 
             <FlashMessage />
+
+            <!-- Bonus: filtro simple por género (query string ?genero=) -->
+            <div class="mb-4 flex flex-wrap items-center gap-2">
+                <label class="text-sm text-gray-700" for="filtro-genero">Filtrar por género:</label>
+                <select
+                    id="filtro-genero"
+                    class="rounded border-gray-300 text-sm shadow-sm"
+                    :value="props.filtros.genero"
+                    @change="cambiarFiltroGenero"
+                >
+                    <option value="">Todos</option>
+                    <option value="masculino">Masculino</option>
+                    <option value="femenino">Femenino</option>
+                    <option value="n/a">n/a</option>
+                </select>
+            </div>
 
             <div class="overflow-x-auto rounded-lg border border-gray-200 bg-white shadow-sm">
                 <table class="min-w-full text-left text-sm">

@@ -8,6 +8,7 @@ use App\Http\Requests\UpdatePersonajeRequest;
 use App\Models\Personaje;
 use App\Services\SwapiPersonajeService;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 use RuntimeException;
@@ -17,16 +18,26 @@ use RuntimeException;
  */
 class PersonajeController extends Controller
 {
-    /** Lista personajes con 10 registros por página. */
-    public function index(): Response
+    /** Lista personajes con 10 registros por página y filtro opcional por género. */
+    public function index(Request $request): Response
     {
-        $personajes = Personaje::query()
-            ->orderBy('nombre')
-            ->paginate(10)
-            ->withQueryString();
+        $generoFiltro = $request->string('genero')->toString();
+        $generosPermitidos = ['masculino', 'femenino', 'n/a'];
+
+        $consulta = Personaje::query()->orderBy('nombre');
+
+        // Bonus: filtrar solo si llega un género válido en la URL (?genero=masculino).
+        if (in_array($generoFiltro, $generosPermitidos, true)) {
+            $consulta->where('genero', $generoFiltro);
+        } else {
+            $generoFiltro = '';
+        }
 
         return Inertia::render('Personajes/Index', [
-            'personajes' => $personajes,
+            'personajes' => $consulta->paginate(10)->withQueryString(),
+            'filtros' => [
+                'genero' => $generoFiltro,
+            ],
         ]);
     }
 
