@@ -1,66 +1,166 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Sistema de Gestión de Personajes Star Wars
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+Aplicación web para administrar personajes de Star Wars: CRUD completo e importación desde [SWAPI](https://swapi.py4e.com/).
 
-## About Laravel
+## Información del Candidato
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+- **Nombre:** Bryan Alejandro Acosta Vergara
+- **Email:** alejoav.2905@gmail.com
+- **Teléfono:** 0995053499
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+## Requisitos del Sistema
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+- PHP 8.1+
+- Composer
+- Node.js 18+
+- MySQL 8+
 
-## Learning Laravel
+## Instalación
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+1. Clonar repositorio
 
-You may also try the [Laravel Bootcamp](https://bootcamp.laravel.com), where you will be guided through building a modern Laravel application from scratch.
+```bash
+git clone https://github.com/allett29/personajes-star-wars.git
+cd personajes-star-wars
+```
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains over 2000 video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+2. Instalar dependencias
 
-## Laravel Sponsors
+```bash
+composer install
+npm install
+```
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the Laravel [Patreon page](https://patreon.com/taylorotwell).
+3. Configurar base de datos
 
-### Premium Partners
+```bash
+cp .env.example .env
+php artisan key:generate
+```
 
-- **[Vehikl](https://vehikl.com/)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Cubet Techno Labs](https://cubettech.com)**
-- **[Cyber-Duck](https://cyber-duck.co.uk)**
-- **[Many](https://www.many.co.uk)**
-- **[Webdock, Fast VPS Hosting](https://www.webdock.io/en)**
-- **[DevSquad](https://devsquad.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel/)**
-- **[OP.GG](https://op.gg)**
-- **[WebReinvent](https://webreinvent.com/?utm_source=laravel&utm_medium=github&utm_campaign=patreon-sponsors)**
-- **[Lendio](https://lendio.com)**
+Crear una base de datos vacía llamada `personajes_sw` y ajustar en `.env` las credenciales de MySQL (`DB_USERNAME`, `DB_PASSWORD`).
 
-## Contributing
+4. Ejecutar migraciones (y opcionalmente cargar datos de ejemplo)
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+```bash
+php artisan migrate
+php artisan db:seed
+```
 
-## Code of Conduct
+5. Compilar assets
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+```bash
+npm run build
+```
 
-## Security Vulnerabilities
+6. Iniciar servidor
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+```bash
+php artisan serve
+```
 
-## License
+7. Acceder
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+http://localhost:8000/personajes
+
+### Importar varios personajes desde la terminal (opcional)
+
+```bash
+php artisan personajes:importar-swapi 1 4 10
+```
+
+## Funcionalidades Implementadas
+
+**Obligatorias:**
+
+- CRUD completo de personajes (listar, crear, editar, eliminar con confirmación)
+- Integración con SWAPI: importación por ID (1–83) con mapeo de campos al español y sin duplicados
+- Validaciones backend (Form Requests) y frontend (errores por campo con `useForm`)
+- Paginación de 10 registros por página
+- Componentes Vue reutilizables
+- Diseño responsive
+- Estados de carga y mensajes de éxito/error
+
+**Bonus:**
+
+- Service Layer: `SwapiPersonajeService` concentra la consulta y el mapeo de SWAPI
+- Soft Deletes: eliminar no borra el registro; reimportar un personaje eliminado lo restaura
+- Comando Artisan para importar múltiples personajes
+- Búsqueda en tiempo real por nombre
+- Filtro por género
+- Ordenamiento de tabla por columnas
+- Animaciones con Tailwind (modales, notificaciones, spinners)
+- Dark mode (se recuerda la preferencia)
+- Seeder con datos de prueba
+
+## Tecnologías
+
+- Laravel 10.x
+- Vue.js 3.x (`<script setup>`)
+- Inertia.js
+- Tailwind CSS
+- MySQL
+- Vite
+
+## Notas
+
+- No se usó Breeze ni Jetstream; Inertia se configuró manualmente.
+- El servidor usa `inertia-laravel` 2.x y el cliente `@inertiajs/vue3` 3.x. Por eso `.env` incluye `INERTIA_USE_SCRIPT_ELEMENT_FOR_INITIAL_PAGE=true` (ya está en `.env.example`).
+- Durante el desarrollo, en lugar del paso 5 se puede usar `npm run dev` junto a `php artisan serve`.
+
+---
+
+## Decisiones Técnicas
+
+### 1. Organización del código backend
+
+El controller (`PersonajeController`) solo coordina: recibe la petición, llama a quien corresponde y redirige con un mensaje. Las validaciones van en Form Requests (`StorePersonajeRequest`, `UpdatePersonajeRequest`, `ImportPersonajeSwapiRequest`) y la comunicación con SWAPI en un Service (`SwapiPersonajeService`). Así el mismo servicio lo reutilizan el controller y el comando Artisan sin duplicar código.
+
+### 2. Componentes Vue
+
+- `PersonajeForm`: formulario único para crear y editar; recibe el `form`, el texto del botón y la URL de cancelar.
+- `FormField`: etiqueta, campo y mensaje de error con el mismo estilo en todo el formulario.
+- `ModalBase`: modal genérico (cierra con Esc o clic afuera); sobre él se construyen `ImportModal` y `ConfirmDialog`.
+- `ConfirmDialog`: confirmación reutilizable (eliminar, salir sin guardar).
+- `Paginacion`, `ToastContainer`, `Spinner`, `PageHeader` y `OrigenBadge`: piezas de interfaz usadas en varias páginas.
+
+Son reutilizables porque reciben todo por props y avisan con eventos, sin depender de una página concreta.
+
+### 3. Manejo de errores de SWAPI
+
+En `SwapiPersonajeService`:
+
+- **Timeout / API caída:** la petición tiene `timeout(15)` y se captura `ConnectionException`.
+- **ID inválido:** el Form Request limita el ID a 1–83 y, si la API responde 404, se muestra "no existe".
+- **Otros errores HTTP:** se informa que SWAPI no respondió correctamente.
+- **Datos "unknown":** altura y masa se guardan como `null`.
+- **Duplicados:** antes de consultar se revisa si el `swapi_id` ya existe.
+
+Todos los errores se muestran al usuario en español dentro del modal, sin romper la aplicación.
+
+### 4. Validaciones
+
+En el backend, con Form Requests, porque es la única validación que no se puede saltar y deja el controller limpio. Los mensajes están en español y Inertia los envía al formulario, donde `useForm` muestra cada error debajo de su campo. En el frontend solo hay ayudas básicas (campos `required`, tipo número) para mejorar la experiencia.
+
+### 5. Mayor dificultad
+
+La pantalla en blanco al iniciar Inertia: el cliente (v3) y el servidor (v2) envían la página inicial de forma distinta. Lo resolví leyendo el error de consola y la documentación, y activando `INERTIA_USE_SCRIPT_ELEMENT_FOR_INITIAL_PAGE`. Otro punto fue que, con Soft Deletes, reimportar un personaje eliminado chocaba con el `swapi_id` único; lo resolví buscando con `withTrashed()` y restaurándolo.
+
+### 6. Uso de Inteligencia Artificial
+
+Sí, usé Claude (en Cursor). Principalmente para el frontend (diseño de la interfaz, modales, notificaciones, dark mode) y para limpiar y simplificar la lógica. Validé el código probando cada flujo en el navegador (crear, editar, eliminar, importar, errores de validación y de SWAPI), ejecutando las migraciones y el comando Artisan, compilando con `npm run build` y revisando cada archivo para entenderlo y poder modificarlo.
+
+### 7. Mejoras futuras
+
+- Pruebas automatizadas (Feature tests del CRUD y de la importación con `Http::fake`).
+- Papelera para ver y restaurar personajes eliminados desde la interfaz.
+- Obtener el nombre real del planeta de origen desde SWAPI.
+- Docker Compose y GitHub Actions.
+
+### 8. Autoevaluación
+
+**8/10.** Cumple todo lo obligatorio y varios bonus, con código ordenado y fácil de modificar. Lo mejor: la separación en Service y Form Requests, y los componentes reutilizables. Le falta cubrirlo con pruebas automatizadas.
+
+### 9. Tiempo invertido
+
+Aproximadamente **4 horas**.
