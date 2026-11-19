@@ -1,82 +1,92 @@
 <script setup>
 /**
- * Formulario reutilizable para crear y editar personajes.
+ * Formulario de personaje compartido por las páginas Crear y Editar.
+ * Recibe el `form` de useForm() y emite "enviar" al guardar.
+ * Si hay cambios sin guardar, "Cancelar" pide confirmación antes de salir.
  */
-import { btnPrimario, inputBase, selectBase } from '@/lib/clasesUi';
+import ConfirmDialog from '@/Components/ConfirmDialog.vue';
+import FormField from '@/Components/FormField.vue';
+import Spinner from '@/Components/Spinner.vue';
+import { btnPrimario, btnSecundario, inputBase } from '@/lib/clasesUi.js';
+import { GENEROS } from '@/lib/opciones.js';
+import { router } from '@inertiajs/vue3';
+import { ref } from 'vue';
 
-defineProps({
+const props = defineProps({
     form: { type: Object, required: true },
-    submitLabel: { type: String, default: 'Guardar' },
+    textoBoton: { type: String, default: 'Guardar' },
+    urlCancelar: { type: String, default: '/personajes' },
 });
 
-defineEmits(['submit']);
+const emit = defineEmits(['enviar']);
+
+const confirmarSalida = ref(false);
+
+function cancelar() {
+    if (props.form.isDirty) {
+        confirmarSalida.value = true;
+        return;
+    }
+    router.visit(props.urlCancelar);
+}
+
+function salirSinGuardar() {
+    confirmarSalida.value = false;
+    router.visit(props.urlCancelar);
+}
 </script>
 
 <template>
-    <form class="space-y-4" @submit.prevent="$emit('submit')">
-        <div>
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-200" for="nombre">Nombre *</label>
-            <input id="nombre" v-model="form.nombre" type="text" :class="inputBase" required minlength="3" />
-            <p v-if="form.errors.nombre" class="mt-1 text-sm text-red-600 dark:text-red-400">{{ form.errors.nombre }}</p>
+    <form class="space-y-5" @submit.prevent="emit('enviar')">
+        <FormField etiqueta="Nombre" para="nombre" :error="form.errors.nombre" requerido>
+            <input id="nombre" v-model="form.nombre" type="text" required minlength="3" maxlength="100" :class="inputBase" />
+        </FormField>
+
+        <div class="grid gap-5 sm:grid-cols-2">
+            <FormField etiqueta="Altura (cm)" para="altura" :error="form.errors.altura">
+                <input id="altura" v-model="form.altura" type="number" min="1" max="300" step="1" :class="inputBase" />
+            </FormField>
+
+            <FormField etiqueta="Masa (kg)" para="masa" :error="form.errors.masa">
+                <input id="masa" v-model="form.masa" type="number" min="1" max="500" step="1" :class="inputBase" />
+            </FormField>
+
+            <FormField etiqueta="Color de cabello" para="color_cabello" :error="form.errors.color_cabello">
+                <input id="color_cabello" v-model="form.color_cabello" type="text" maxlength="100" :class="inputBase" />
+            </FormField>
+
+            <FormField etiqueta="Color de ojos" para="color_ojos" :error="form.errors.color_ojos">
+                <input id="color_ojos" v-model="form.color_ojos" type="text" maxlength="100" :class="inputBase" />
+            </FormField>
+
+            <FormField etiqueta="Género" para="genero" :error="form.errors.genero" requerido>
+                <select id="genero" v-model="form.genero" required :class="inputBase">
+                    <option value="" disabled>Selecciona una opción</option>
+                    <option v-for="opcion in GENEROS" :key="opcion.valor" :value="opcion.valor">{{ opcion.texto }}</option>
+                </select>
+            </FormField>
+
+            <FormField etiqueta="Planeta de origen" para="planeta_origen" :error="form.errors.planeta_origen">
+                <input id="planeta_origen" v-model="form.planeta_origen" type="text" maxlength="100" :class="inputBase" />
+            </FormField>
         </div>
 
-        <div class="grid gap-4 sm:grid-cols-2">
-            <div>
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-200" for="altura">Altura (cm)</label>
-                <input id="altura" v-model="form.altura" type="number" min="1" max="300" :class="inputBase" />
-                <p v-if="form.errors.altura" class="mt-1 text-sm text-red-600 dark:text-red-400">{{ form.errors.altura }}</p>
-            </div>
-            <div>
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-200" for="masa">Masa (kg)</label>
-                <input id="masa" v-model="form.masa" type="number" min="1" max="500" :class="inputBase" />
-                <p v-if="form.errors.masa" class="mt-1 text-sm text-red-600 dark:text-red-400">{{ form.errors.masa }}</p>
-            </div>
-        </div>
-
-        <div class="grid gap-4 sm:grid-cols-2">
-            <div>
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-200" for="color_cabello">
-                    Color de cabello
-                </label>
-                <input id="color_cabello" v-model="form.color_cabello" type="text" :class="inputBase" />
-                <p v-if="form.errors.color_cabello" class="mt-1 text-sm text-red-600 dark:text-red-400">
-                    {{ form.errors.color_cabello }}
-                </p>
-            </div>
-            <div>
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-200" for="color_ojos">Color de ojos</label>
-                <input id="color_ojos" v-model="form.color_ojos" type="text" :class="inputBase" />
-                <p v-if="form.errors.color_ojos" class="mt-1 text-sm text-red-600 dark:text-red-400">
-                    {{ form.errors.color_ojos }}
-                </p>
-            </div>
-        </div>
-
-        <div>
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-200" for="genero">Género *</label>
-            <select id="genero" v-model="form.genero" :class="selectBase" class="mt-1 w-full" required>
-                <option value="">Seleccione…</option>
-                <option value="masculino">Masculino</option>
-                <option value="femenino">Femenino</option>
-                <option value="n/a">n/a</option>
-            </select>
-            <p v-if="form.errors.genero" class="mt-1 text-sm text-red-600 dark:text-red-400">{{ form.errors.genero }}</p>
-        </div>
-
-        <div>
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-200" for="planeta_origen">
-                Planeta de origen
-            </label>
-            <input id="planeta_origen" v-model="form.planeta_origen" type="text" :class="inputBase" />
-            <p v-if="form.errors.planeta_origen" class="mt-1 text-sm text-red-600 dark:text-red-400">
-                {{ form.errors.planeta_origen }}
-            </p>
-        </div>
-
-        <div class="pt-2">
+        <div class="flex flex-col-reverse gap-2 border-t border-slate-200 pt-5 dark:border-espacio-800 sm:flex-row sm:justify-end">
+            <button type="button" :class="btnSecundario" :disabled="form.processing" @click="cancelar">Cancelar</button>
             <button type="submit" :class="btnPrimario" :disabled="form.processing">
-                {{ form.processing ? 'Guardando…' : submitLabel }}
+                <Spinner v-if="form.processing" />
+                {{ textoBoton }}
             </button>
         </div>
     </form>
+
+    <ConfirmDialog
+        :abierto="confirmarSalida"
+        tipo="aviso"
+        titulo="¿Salir sin guardar?"
+        mensaje="Los cambios que hiciste en este formulario se perderán."
+        texto-confirmar="Salir sin guardar"
+        @confirmar="salirSinGuardar"
+        @cancelar="confirmarSalida = false"
+    />
 </template>

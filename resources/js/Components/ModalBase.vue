@@ -1,54 +1,57 @@
 <script setup>
 /**
- * Contenedor visual para modales: fondo semitransparente y panel centrado.
- * Emite "cerrar" al hacer clic fuera del panel (si no está deshabilitado).
+ * Base de todos los modales: fondo oscurecido y panel centrado.
+ * Se cierra con la tecla Esc o con clic fuera del panel.
+ * `bloquearCierre` impide cerrarlo mientras algo se está procesando.
  */
-defineProps({
+import { onBeforeUnmount, onMounted } from 'vue';
+
+const props = defineProps({
     abierto: { type: Boolean, default: false },
-    tituloId: { type: String, default: 'modal-titulo' },
-    deshabilitarCerrar: { type: Boolean, default: false },
+    tituloId: { type: String, required: true },
+    bloquearCierre: { type: Boolean, default: false },
 });
 
 const emit = defineEmits(['cerrar']);
 
-function cerrarFondo() {
-    emit('cerrar');
+function intentarCerrar() {
+    if (!props.bloquearCierre) {
+        emit('cerrar');
+    }
 }
+
+function alPresionarTecla(evento) {
+    if (evento.key === 'Escape' && props.abierto) {
+        intentarCerrar();
+    }
+}
+
+onMounted(() => window.addEventListener('keydown', alPresionarTecla));
+onBeforeUnmount(() => window.removeEventListener('keydown', alPresionarTecla));
 </script>
 
 <template>
-    <Transition
-        enter-active-class="transition duration-200 ease-out"
-        enter-from-class="opacity-0"
-        enter-to-class="opacity-100"
-        leave-active-class="transition duration-150 ease-in"
-        leave-from-class="opacity-100"
-        leave-to-class="opacity-0"
-    >
-        <div
-            v-if="abierto"
-            class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-[1px]"
-            role="dialog"
-            aria-modal="true"
-            :aria-labelledby="tituloId"
-            @click.self="!deshabilitarCerrar && cerrarFondo()"
+    <Teleport to="body">
+        <Transition
+            enter-active-class="transition duration-150 ease-out"
+            enter-from-class="opacity-0"
+            leave-active-class="transition duration-100 ease-in"
+            leave-to-class="opacity-0"
         >
-            <Transition
-                enter-active-class="transition duration-200 ease-out"
-                enter-from-class="opacity-0 scale-95"
-                enter-to-class="opacity-100 scale-100"
-                leave-active-class="transition duration-150 ease-in"
-                leave-from-class="opacity-100 scale-100"
-                leave-to-class="opacity-0 scale-95"
+            <div
+                v-if="abierto"
+                class="fixed inset-0 z-50 flex items-end justify-center bg-espacio-950/60 p-4 sm:items-center"
+                @click.self="intentarCerrar"
             >
                 <div
-                    v-if="abierto"
-                    class="w-full max-w-md rounded-xl border border-gray-200 bg-white p-6 shadow-xl dark:border-gray-600 dark:bg-gray-800"
-                    @click.stop
+                    role="dialog"
+                    aria-modal="true"
+                    :aria-labelledby="tituloId"
+                    class="w-full max-w-md rounded-xl border border-slate-200 bg-white p-6 shadow-xl dark:border-espacio-800 dark:bg-espacio-900"
                 >
                     <slot />
                 </div>
-            </Transition>
-        </div>
-    </Transition>
+            </div>
+        </Transition>
+    </Teleport>
 </template>

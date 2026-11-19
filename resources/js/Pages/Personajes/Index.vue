@@ -1,253 +1,207 @@
 <script setup>
 /**
- * Listado principal: filtros en URL, tabla ordenable, confirmación al eliminar.
+ * Listado de personajes: búsqueda en tiempo real, filtro por género,
+ * orden por columna, paginación y eliminación con confirmación.
+ * Los filtros viven en la URL y el servidor hace la consulta.
  */
 import AppLayout from '@/Layouts/AppLayout.vue';
-import CardPanel from '@/Components/CardPanel.vue';
 import ConfirmDialog from '@/Components/ConfirmDialog.vue';
-import FlashMessage from '@/Components/FlashMessage.vue';
 import ImportModal from '@/Components/ImportModal.vue';
+import OrigenBadge from '@/Components/OrigenBadge.vue';
 import PageHeader from '@/Components/PageHeader.vue';
-import { visitarListado } from '@/composables/useFiltrosListado';
-import { btnAdvertencia, btnEnlace, btnEnlacePeligro, btnPrimario, filaTabla, selectBase, tablaCabecera } from '@/lib/clasesUi';
-import { Link, router } from '@inertiajs/vue3';
-import { computed, ref } from 'vue';
+import Paginacion from '@/Components/Paginacion.vue';
+import { visitarListado } from '@/composables/useFiltrosListado.js';
+import { btnPrimario, btnSecundario, btnTexto, btnTextoPeligro, inputBase, tarjeta } from '@/lib/clasesUi.js';
+import { GENEROS, textoGenero } from '@/lib/opciones.js';
+import { Head, Link, router } from '@inertiajs/vue3';
+import { computed, ref, watch } from 'vue';
 
 defineOptions({ layout: AppLayout });
 
 const props = defineProps({
     personajes: { type: Object, required: true },
-    filtros: {
-        type: Object,
-        default: () => ({
-            genero: '',
-            buscar: '',
-            orden: 'nombre',
-            direccion: 'asc',
-        }),
-    },
+    filtros: { type: Object, required: true },
 });
 
+const columnasOrdenables = [
+    { clave: 'nombre', titulo: 'Nombre' },
+    { clave: 'altura', titulo: 'Altura' },
+    { clave: 'masa', titulo: 'Masa' },
+    { clave: 'genero', titulo: 'Género' },
+];
+
 const modalImportarAbierto = ref(false);
-const confirmarEliminar = ref(false);
-const idEliminar = ref(null);
-const nombreEliminar = ref('');
-const eliminando = ref(false);
 
-const textoBusqueda = ref(props.filtros.buscar ?? '');
+/* ---------- Filtros ---------- */
 
-/** Parámetros actuales para conservar al cambiar un solo filtro. */
-const filtrosBase = computed(() => ({
-    genero: props.filtros.genero ?? '',
-    buscar: props.filtros.buscar ?? '',
-    orden: props.filtros.orden ?? 'nombre',
-    direccion: props.filtros.direccion ?? 'asc',
-}));
+const busqueda = ref(props.filtros.buscar ?? '');
+const genero = ref(props.filtros.genero ?? '');
 
-function etiquetaOrigen(origenSwapi) {
-    return origenSwapi ? 'SWAPI' : 'Manual';
-}
+const hayFiltros = computed(() => busqueda.value.trim() !== '' || genero.value !== '');
 
-function aplicarBusqueda() {
-    visitarListado({ ...filtrosBase.value, buscar: textoBusqueda.value.trim() });
-}
-
-function cambiarGenero(evento) {
-    visitarListado({ ...filtrosBase.value, genero: evento.target.value });
-}
-
-/** Alterna asc/desc al hacer clic en el encabezado de columna. */
-function ordenarPor(columna) {
-    const direccion =
-        props.filtros.orden === columna && props.filtros.direccion === 'asc' ? 'desc' : 'asc';
-
+/** Recarga el listado con los filtros actuales; `cambios` reemplaza valores puntuales. */
+function recargar(cambios = {}) {
     visitarListado({
-        ...filtrosBase.value,
-        orden: columna,
-        direccion,
+        buscar: busqueda.value.trim(),
+        genero: genero.value,
+        orden: props.filtros.orden,
+        direccion: props.filtros.direccion,
+        ...cambios,
     });
 }
 
-function indicadorOrden(columna) {
+// Búsqueda en tiempo real: espera 350 ms después de la última tecla antes de consultar.
+let temporizador = null;
+watch(busqueda, () => {
+    clearTimeout(temporizador);
+    temporizador = setTimeout(() => {
+        if (busqueda.value.trim() !== (props.filtros.buscar ?? '')) {
+            recargar();
+        }
+    }, 350);
+});
+
+watch(genero, () => recargar());
+
+function limpiarFiltros() {
+    busqueda.value = '';
+    genero.value = '';
+}
+
+/* ---------- Orden ---------- */
+
+/** Clic en una columna: ordena ascendente; un segundo clic invierte el orden. */
+function ordenarPor(columna) {
+    const esLaMisma = props.filtros.orden === columna;
+    const direccion = esLaMisma && props.filtros.direccion === 'asc' ? 'desc' : 'asc';
+    recargar({ orden: columna, direccion });
+}
+
+function flechaOrden(columna) {
     if (props.filtros.orden !== columna) {
         return '';
     }
-
-    return props.filtros.direccion === 'asc' ? ' ↑' : ' ↓';
+    return props.filtros.direccion === 'asc' ? '↑' : '↓';
 }
 
-function pedirEliminar(personaje) {
-    idEliminar.value = personaje.id;
-    nombreEliminar.value = personaje.nombre;
-    confirmarEliminar.value = true;
-}
+/* ---------- Eliminar ---------- */
+
+const personajeAEliminar = ref(null);
+const eliminando = ref(false);
 
 function cancelarEliminar() {
-    if (eliminando.value) {
-        return;
+    if (!eliminando.value) {
+        personajeAEliminar.value = null;
     }
-    confirmarEliminar.value = false;
-    idEliminar.value = null;
-    nombreEliminar.value = '';
 }
 
-function confirmarEliminacion() {
+function confirmarEliminar() {
     eliminando.value = true;
-    router.delete(`/personajes/${idEliminar.value}`, {
+    router.delete(`/personajes/${personajeAEliminar.value.id}`, {
         preserveScroll: true,
         onFinish: () => {
             eliminando.value = false;
-            cancelarEliminar();
+            personajeAEliminar.value = null;
         },
     });
+}
+
+/** Muestra el número con su unidad, o una raya si no hay dato. */
+function conUnidad(valor, unidad) {
+    return valor === null ? '—' : `${valor} ${unidad}`;
 }
 </script>
 
 <template>
-    <div class="py-8">
-        <div class="mx-auto max-w-5xl px-4">
-            <PageHeader titulo="Personajes Star Wars" descripcion="Gestión manual e importación desde SWAPI.">
-                <template #acciones>
-                    <button type="button" :class="btnAdvertencia" @click="modalImportarAbierto = true">
-                        Importar SWAPI
-                    </button>
-                    <Link href="/personajes/crear" :class="btnPrimario">Crear nuevo</Link>
-                </template>
-            </PageHeader>
+    <Head title="Personajes" />
 
-            <ImportModal :abierto="modalImportarAbierto" @cerrar="modalImportarAbierto = false" />
-            <FlashMessage />
+    <PageHeader titulo="Personajes" :descripcion="`${personajes.total} en el archivo, creados a mano o importados desde SWAPI.`">
+        <template #acciones>
+            <button type="button" :class="btnSecundario" @click="modalImportarAbierto = true">Importar desde SWAPI</button>
+            <Link href="/personajes/crear" :class="btnPrimario">Crear nuevo</Link>
+        </template>
+    </PageHeader>
 
-            <ConfirmDialog
-                :abierto="confirmarEliminar"
-                titulo="Eliminar personaje"
-                :mensaje="`¿Eliminar a «${nombreEliminar}»? Esta acción no se puede deshacer.`"
-                texto-confirmar="Eliminar"
-                :cargando="eliminando"
-                @confirmar="confirmarEliminacion"
-                @cancelar="cancelarEliminar"
-            />
+    <!-- Filtros -->
+    <div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end">
+        <div class="flex-1">
+            <label for="buscar" class="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-200">Buscar por nombre</label>
+            <input id="buscar" v-model="busqueda" type="search" placeholder="Por ejemplo, Leia" autocomplete="off" :class="inputBase" />
+        </div>
+        <div class="sm:w-48">
+            <label for="filtro-genero" class="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-200">Género</label>
+            <select id="filtro-genero" v-model="genero" :class="inputBase">
+                <option value="">Todos</option>
+                <option v-for="opcion in GENEROS" :key="opcion.valor" :value="opcion.valor">{{ opcion.texto }}</option>
+            </select>
+        </div>
+        <button v-if="hayFiltros" type="button" :class="btnSecundario" @click="limpiarFiltros">Limpiar filtros</button>
+    </div>
 
-            <CardPanel class="mb-4 !p-4">
-                <div class="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
-                    <div class="min-w-[200px] flex-1">
-                        <label class="text-sm font-medium text-gray-700 dark:text-gray-200" for="buscar">
-                            Buscar por nombre
-                        </label>
-                        <form class="mt-1 flex gap-2" @submit.prevent="aplicarBusqueda">
-                            <input
-                                id="buscar"
-                                v-model="textoBusqueda"
-                                type="search"
-                                placeholder="Ej. Luke"
-                                class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100"
-                            />
-                            <button type="submit" :class="btnPrimario">Buscar</button>
-                        </form>
-                    </div>
-                    <div>
-                        <label class="text-sm font-medium text-gray-700 dark:text-gray-200" for="filtro-genero">
-                            Género
-                        </label>
-                        <select
-                            id="filtro-genero"
-                            :class="['mt-1', selectBase]"
-                            :value="props.filtros.genero"
-                            @change="cambiarGenero"
-                        >
-                            <option value="">Todos</option>
-                            <option value="masculino">Masculino</option>
-                            <option value="femenino">Femenino</option>
-                            <option value="n/a">n/a</option>
-                        </select>
-                    </div>
-                </div>
-            </CardPanel>
+    <!-- Tabla -->
+    <div :class="[tarjeta, 'overflow-hidden']">
+        <div class="overflow-x-auto">
+            <table class="min-w-full text-left text-sm">
+                <thead class="border-b border-slate-200 bg-slate-50 text-slate-600 dark:border-espacio-800 dark:bg-espacio-950/40 dark:text-slate-300">
+                    <tr>
+                        <th v-for="columna in columnasOrdenables" :key="columna.clave" scope="col" class="px-4 py-3 font-medium">
+                            <button
+                                type="button"
+                                class="inline-flex items-center gap-1 hover:text-slate-900 dark:hover:text-white"
+                                @click="ordenarPor(columna.clave)"
+                            >
+                                {{ columna.titulo }}
+                                <span class="text-xs" aria-hidden="true">{{ flechaOrden(columna.clave) }}</span>
+                            </button>
+                        </th>
+                        <th scope="col" class="px-4 py-3 font-medium">Origen</th>
+                        <th scope="col" class="px-4 py-3 text-right font-medium">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr
+                        v-for="personaje in personajes.data"
+                        :key="personaje.id"
+                        class="border-b border-slate-100 last:border-0 dark:border-espacio-800"
+                    >
+                        <td class="px-4 py-3 font-medium text-slate-900 dark:text-white">{{ personaje.nombre }}</td>
+                        <td class="whitespace-nowrap px-4 py-3 tabular-nums">{{ conUnidad(personaje.altura, 'cm') }}</td>
+                        <td class="whitespace-nowrap px-4 py-3 tabular-nums">{{ conUnidad(personaje.masa, 'kg') }}</td>
+                        <td class="px-4 py-3">{{ textoGenero(personaje.genero) }}</td>
+                        <td class="px-4 py-3"><OrigenBadge :swapi="personaje.origen_swapi" /></td>
+                        <td class="whitespace-nowrap px-4 py-3 text-right">
+                            <Link :href="`/personajes/${personaje.id}/editar`" :class="btnTexto">Editar</Link>
+                            <button type="button" :class="btnTextoPeligro" @click="personajeAEliminar = personaje">Eliminar</button>
+                        </td>
+                    </tr>
 
-            <CardPanel class="!p-0 overflow-hidden">
-                <div class="overflow-x-auto">
-                    <table class="min-w-full text-left text-sm">
-                        <thead :class="tablaCabecera">
-                            <tr>
-                                <th class="px-4 py-3">
-                                    <button type="button" class="font-semibold hover:underline" @click="ordenarPor('nombre')">
-                                        Nombre{{ indicadorOrden('nombre') }}
-                                    </button>
-                                </th>
-                                <th class="px-4 py-3">
-                                    <button type="button" class="font-semibold hover:underline" @click="ordenarPor('altura')">
-                                        Altura{{ indicadorOrden('altura') }}
-                                    </button>
-                                </th>
-                                <th class="px-4 py-3">
-                                    <button type="button" class="font-semibold hover:underline" @click="ordenarPor('masa')">
-                                        Masa{{ indicadorOrden('masa') }}
-                                    </button>
-                                </th>
-                                <th class="px-4 py-3">
-                                    <button type="button" class="font-semibold hover:underline" @click="ordenarPor('genero')">
-                                        Género{{ indicadorOrden('genero') }}
-                                    </button>
-                                </th>
-                                <th class="px-4 py-3">Origen</th>
-                                <th class="px-4 py-3 text-right">Acciones</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr v-for="personaje in personajes.data" :key="personaje.id" :class="filaTabla">
-                                <td class="px-4 py-3 font-medium text-gray-900 dark:text-gray-100">{{ personaje.nombre }}</td>
-                                <td class="px-4 py-3 text-gray-600 dark:text-gray-300">{{ personaje.altura ?? '—' }}</td>
-                                <td class="px-4 py-3 text-gray-600 dark:text-gray-300">{{ personaje.masa ?? '—' }}</td>
-                                <td class="px-4 py-3 text-gray-600 dark:text-gray-300">{{ personaje.genero }}</td>
-                                <td class="px-4 py-3">
-                                    <span
-                                        class="rounded-full px-2 py-0.5 text-xs font-medium"
-                                        :class="
-                                            personaje.origen_swapi
-                                                ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200'
-                                                : 'bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-200'
-                                        "
-                                    >
-                                        {{ etiquetaOrigen(personaje.origen_swapi) }}
-                                    </span>
-                                </td>
-                                <td class="px-4 py-3 text-right">
-                                    <Link :href="`/personajes/${personaje.id}/editar`" :class="btnEnlace">Editar</Link>
-                                    <button type="button" :class="[btnEnlacePeligro, 'ms-3']" @click="pedirEliminar(personaje)">
-                                        Eliminar
-                                    </button>
-                                </td>
-                            </tr>
-                            <tr v-if="personajes.data.length === 0">
-                                <td colspan="6" class="px-4 py-10 text-center text-gray-500 dark:text-gray-400">
-                                    No hay personajes con estos filtros.
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </CardPanel>
-
-            <div v-if="personajes.links.length > 3" class="mt-4 flex flex-wrap justify-center gap-1">
-                <template v-for="(link, i) in personajes.links" :key="i">
-                    <Link
-                        v-if="link.url"
-                        :href="link.url"
-                        class="rounded-lg border px-3 py-1 text-sm transition"
-                        :class="
-                            link.active
-                                ? 'border-indigo-600 bg-indigo-600 text-white'
-                                : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700'
-                        "
-                        v-html="link.label"
-                    />
-                    <span
-                        v-else
-                        class="rounded-lg border border-gray-200 px-3 py-1 text-sm text-gray-400 dark:border-gray-700"
-                        v-html="link.label"
-                    />
-                </template>
-            </div>
+                    <!-- Estado vacío: indica qué hacer a continuación -->
+                    <tr v-if="personajes.data.length === 0">
+                        <td colspan="6" class="px-4 py-12 text-center">
+                            <p class="font-medium text-slate-900 dark:text-white">
+                                {{ hayFiltros ? 'Ningún personaje coincide con la búsqueda' : 'Todavía no hay personajes' }}
+                            </p>
+                            <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                                {{ hayFiltros ? 'Prueba con otro nombre o limpia los filtros.' : 'Crea uno nuevo o importa uno desde SWAPI.' }}
+                            </p>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
         </div>
     </div>
+
+    <Paginacion :paginador="personajes" />
+
+    <ImportModal :abierto="modalImportarAbierto" @cerrar="modalImportarAbierto = false" />
+
+    <ConfirmDialog
+        :abierto="personajeAEliminar !== null"
+        titulo="Eliminar personaje"
+        :mensaje="`Se eliminará a ${personajeAEliminar?.nombre} de forma permanente.`"
+        texto-confirmar="Eliminar"
+        :cargando="eliminando"
+        @confirmar="confirmarEliminar"
+        @cancelar="cancelarEliminar"
+    />
 </template>

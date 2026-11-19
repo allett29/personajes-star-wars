@@ -1,10 +1,10 @@
 <script setup>
+/** Página para crear un personaje a mano. */
 import AppLayout from '@/Layouts/AppLayout.vue';
-import CardPanel from '@/Components/CardPanel.vue';
 import PageHeader from '@/Components/PageHeader.vue';
 import PersonajeForm from '@/Components/PersonajeForm.vue';
-import { btnEnlace } from '@/lib/clasesUi';
-import { Link, useForm } from '@inertiajs/vue3';
+import { tarjeta } from '@/lib/clasesUi.js';
+import { Head, useForm } from '@inertiajs/vue3';
 
 defineOptions({ layout: AppLayout });
 
@@ -24,13 +24,12 @@ function guardar() {
 </script>
 
 <template>
-    <div class="py-8">
-        <div class="mx-auto max-w-xl px-4">
-            <PageHeader titulo="Nuevo personaje" descripcion="Alta manual (origen Manual)." />
-            <CardPanel>
-                <PersonajeForm :form="form" submit-label="Guardar" @submit="guardar" />
-                <Link href="/personajes" :class="[btnEnlace, 'mt-6 inline-block']">Volver al listado</Link>
-            </CardPanel>
+    <Head title="Crear personaje" />
+
+    <div class="mx-auto max-w-2xl">
+        <PageHeader titulo="Crear personaje" descripcion="Los campos marcados con * son obligatorios." />
+        <div :class="[tarjeta, 'p-6']">
+            <PersonajeForm :form="form" texto-boton="Guardar" @enviar="guardar" />
         </div>
     </div>
 </template>

@@ -2,33 +2,12 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Tokens de superficie y texto (claro / oscuro) — ver docs/skills/laravel-inertia-vue-SKILL.md */
-@layer base {
-    :root {
-        --surface-page: #f8fafc;
-        --surface-card: #ffffff;
-        --surface-muted: #f1f5f9;
-        --text-primary: #0f172a;
-        --text-secondary: #475569;
-        --border-default: #e2e8f0;
-        --brand: #4f46e5;
-        --brand-hover: #4338ca;
-    }
-
-    .dark {
-        --surface-page: #0b1120;
-        --surface-card: #111827;
-        --surface-muted: #1e293b;
-        --text-primary: #f8fafc;
-        --text-secondary: #cbd5e1;
-        --border-default: #334155;
-        --brand: #818cf8;
-        --brand-hover: #a5b4fc;
-    }
-
-    body {
-        @apply antialiased;
-        background-color: var(--surface-page);
-        color: var(--text-primary);
+/* Respeta a quienes prefieren menos animación en su sistema. */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        transition-duration: 0.01ms !important;
     }
 }
